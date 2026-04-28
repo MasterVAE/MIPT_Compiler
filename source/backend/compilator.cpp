@@ -62,19 +62,22 @@ static void CompileSystemCodeBefore(FILE* file, TreeNode* root)
     assert(root);
 
     PRINT(  "DEFAULT REL\n"
-            "section     .text\n"
+            "section     .text\n\n"
+
             "extern L0_EQUAL\n"
             "extern L0_NEQUAL\n"
             "extern L0_SMALLER\n"
             "extern L0_BIGGER\n"
             "extern L0_IN\n"
-            "extern L0_OUT\n"
-            "global main\n"
+            "extern L0_OUT\n\n"
+            "global main\n\n"
+
             "main:\n"
-            "lea rbp, [rsp + 8]\n"
-            "lea rax, [rbp + 8]\n"
-            "lea rbx, [rbp + %lu]\n"
-            "mov [rax], rbx\n", (root->nametable->variable_count + 2)*8);
+            "   sub rsp, 1024         ; создание базового фрейма\n"
+            "   lea rbp, [rsp + 8]\n"
+            "   lea rax, [rbp + 8]\n"
+            "   lea rbx, [rbp + %lu]\n"
+            "   mov [rax], rbx\n", (root->nametable->variable_count + 3)*8);
 }
 
 
@@ -82,11 +85,10 @@ static void CompileSystemCodeAfter(FILE* file)
 {
     assert(file);
 
-    PRINT(
-        "_end:\n"
-        "mov rax, 0x3C\n"
-        "xor rdi, rdi\n"
-        "syscall\n"
+    PRINT(  "_end:               ; syscall выхода из программы\n"
+            "   mov rax, 0x3C\n"
+            "   xor rdi, rdi\n"
+            "   syscall\n"
     )
 }
 
@@ -99,13 +101,16 @@ static void CompileFunctions(FILE* file, Compilator* compilator)
     {
         TreeNode* func = compilator->functions[i];
         PRINT("L_%s:\n", func->left->value.identificator);
-        PRINT("pop rcx\n");
+        PRINT(  "   pop rcx\n");
+        PRINT(  "   lea rax, [rbp + 16]\n"
+                "   mov [rax], rcx\n");
         CompileArguments(func->right->left, file, compilator);
-        PRINT("push rcx\n");
         CompileNode(func->right->right, file, compilator);
 
-        PRINT(  "mov rbp, [rbp]\n"
-                "ret\n");
+        PRINT("\n   lea rax, [rbp + 16]\n"
+                "   push [rax]\n"
+                "   mov rbp, [rbp]\n"
+                "   ret\n");
     }
 }
 
@@ -126,8 +131,8 @@ static void CompileArguments(TreeNode* node, FILE* file, Compilator* compilator)
         int i = VariableOffcet(node);
         if(i == -1) ERROR;
 
-        PRINT(  "pop rax\n"
-                "mov [rbp + %d], rax\n", (i + 2) * 8);
+        PRINT(  "   pop rax\n"
+                "   mov [rbp + %d], rax\n", (i + 3) * 8);
     }
     else
     {
@@ -147,8 +152,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
     if(node->type == NODE_CONSTANT)
     {
-        PRINT("mov rax, %d\n", node->value.constant);
-        PRINT("push rax\n");
+        PRINT(  "   mov rax, %d\n", node->value.constant);
+        PRINT(  "   push rax\n");
         return;
     }
 
@@ -165,8 +170,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             int i = VariableOffcet(node);
             if(i == -1) ERROR;
 
-            PRINT("mov rax, [rbp + %d]\n", (i + 2) * 8);
-            PRINT("push rax\n")
+            PRINT("\n   mov rax, [rbp + %d]\n", (i + 3) * 8);
+            PRINT(  "   push rax\n")
                     
             return;
         }
@@ -175,10 +180,10 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT(  "pop rax\n"
-                    "pop rbx\n"
-                    "add rax, rbx\n"
-                    "push rax\n");
+            PRINT(  "   pop rax\n"
+                    "   pop rbx\n"
+                    "   add rax, rbx\n"
+                    "   push rax\n");
 
             return;
         }
@@ -187,10 +192,10 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "pop rax\n"
-                    "pop rbx\n"
-                    "sub rax, rbx\n"
-                    "push rax\n");
+            PRINT(  "   pop rax\n"
+                    "   pop rbx\n"
+                    "   sub rax, rbx\n"
+                    "   push rax\n");
             return;
         }
         case OP_MUL:
@@ -198,11 +203,11 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "pop rax\n"
-                    "pop rbx\n"
-                    "mov rdx, 0\n"
-                    "imul rbx\n"
-                    "push rax\n");
+            PRINT(  "   pop rax\n"
+                    "   pop rbx\n"
+                    "   mov rdx, 0\n"
+                    "   imul rbx\n"
+                    "   push rax\n");
 
 
             return;
@@ -212,11 +217,11 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "pop rax\n"
-                    "pop rbx\n"
-                    "mov rdx, 0\n"
-                    "idiv rbx\n"
-                    "push rax\n");
+            PRINT(  "   pop rax\n"
+                    "   pop rbx\n"
+                    "   mov rdx, 0\n"
+                    "   idiv rbx\n"
+                    "   push rax\n");
 
             return;
         }
@@ -229,8 +234,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             CompileNode(node->right, file, compilator);
 
-            PRINT("pop rax\n");
-            PRINT("mov [rbp + %d], rax\n", (i + 2) * 8);
+            PRINT(  "   pop rax\n");
+            PRINT(  "   mov [rbp + %d], rax\n", (i + 3) * 8);
 
             return;
         }
@@ -238,13 +243,13 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             CompileNode(node->left, file, compilator);
            
-            PRINT("call L0_OUT\n");
+            PRINT(  "   call L0_OUT\n");
 
             return;
         }
         case OP_IN:
         {
-            PRINT("call L0_IN\n");
+            PRINT(  "   call L0_IN\n");
 
             return;
         }
@@ -253,11 +258,11 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             size_t lable = compilator->current_label++;
 
             CompileNode(node->left, file, compilator);
-            PRINT("pop rax\n");
-            PRINT("mov rbx, 0\n");
-            PRINT("cmp rax, rbx\n");
+            PRINT(  "   pop rax\n");
+            PRINT(  "   mov rbx, 0\n");
+            PRINT(  "   cmp rax, rbx\n");
 
-            PRINT("je .L%lu\n", lable);
+            PRINT(  "   je .L%lu\n", lable);
 
             CompileNode(node->right, file, compilator);
 
@@ -274,15 +279,15 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             CompileNode(node->left, file, compilator);
 
-            PRINT("pop rax\n");
-            PRINT("mov rbx, 0\n");
-            PRINT("cmp rax, rbx\n");
+            PRINT(  "   pop rax\n");
+            PRINT(  "   mov rbx, 0\n");
+            PRINT(  "   cmp rax, rbx\n");
 
-            PRINT("je .L%lu\n", label2);
+            PRINT(  "   je .L%lu\n", label2);
 
             CompileNode(node->right, file, compilator);
 
-            PRINT("jmp .L%lu\n", label1);
+            PRINT(  "   jmp .L%lu\n", label1);
 
             PRINT(".L%lu:\n", label2);
 
@@ -293,7 +298,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT("call L0_EQUAL\n");
+            PRINT(  "   call L0_EQUAL\n");
 
             return;
         }
@@ -302,7 +307,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT("call L0_NEQUAL\n");
+            PRINT(  "   call L0_NEQUAL\n");
 
             return;
         }
@@ -312,7 +317,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT("call L0_SMALLER\n");
+            PRINT(  "   call L0_SMALLER\n");
 
             return;
         }
@@ -322,7 +327,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT("call L0_BIGGER\n");
+            PRINT(  "   call L0_BIGGER\n");
 
             return;
         }
@@ -347,18 +352,24 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
                 return;
             }
 
+            size_t idx = SearchFuncInNametable(compilator, name);
+            if (idx >= compilator->function_count) ERROR;
+
+            TreeNode* def = compilator->functions[idx];
+            size_t callee_vars = def->parent_nametable->variable_count;
+
             CompileNode(node->right, file, compilator);
+            
+            PRINT("\n   lea rax, [rbp + 8]          ; создание стекового фрейма для вызываемой функции\n");
+            PRINT(  "   mov rax, [rax]\n");
+            PRINT(  "   mov [rax], rbp\n");
 
-            PRINT("lea rax, [rbp + 8]\n");
-            PRINT("mov rax, [rax]\n");
-            PRINT("mov [rax], rbp\n");
+            PRINT(  "   mov rbp, rax\n");
 
-            PRINT("mov rbp, rax\n");
-
-            PRINT("lea rax, [rbp + 8]\n");
-            PRINT("lea rbx, [rbp + %lu]\n", (2 + node->nametable->variable_count) * 8);
-            PRINT("mov [rax], rbx\n");
-            PRINT("call L_%s\n", node->left->value.identificator);
+            PRINT(  "   lea rax, [rbp + 8]\n");
+            PRINT(  "   lea rbx, [rbp + %lu]\n", (3 + callee_vars) * 8);
+            PRINT(  "   mov [rax], rbx\n");
+            PRINT(  "   call L_%s\n", node->left->value.identificator);
 
             return;
         }
@@ -366,8 +377,10 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             if(node->left)  CompileNode(node->left, file, compilator);
 
-            PRINT(  "mov rbp, [rbp]\n"
-                    "ret\n");
+            PRINT("\n   lea rax, [rbp + 16]             ;return\n"
+                    "   push [rax]\n"
+                    "   mov rbp, [rbp]\n"
+                    "   ret\n");
 
             return;
         }

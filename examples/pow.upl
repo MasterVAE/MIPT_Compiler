@@ -1,0 +1,14 @@
+pow(a, power)
+{
+    if(power > 1)
+    {
+        return(a * pow(a, power - 1));
+    };
+
+    return a;
+};
+
+a = in;
+b = in;
+
+out(pow(a, b));

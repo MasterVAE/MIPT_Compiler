@@ -103,12 +103,53 @@ L0_SMALLER:
 
 
 L0_IN:
-    pop rcx
+    pop r12
 
-    push 0
+    xor rax, rax
+    xor rcx, rcx
+    .loop:
+    call _read
+    movzx rbx, byte [Symbol]
 
-    push rcx
+    cmp bl, byte [EndSymbol]
+    je .end
+
+    cmp bl, '-'
+    jne .continue
+
+.minus:
+    inc rcx
+    jmp .loop
+
+.continue:
+    
+    xor rdx, rdx
+    mov rsi, 10
+    mul rsi
+
+    sub bl, '0'
+    add rax, rbx
+
+    jmp .loop
+
+.end:
+    test rcx, rcx
+    jne .end_minus
+
+    push rax
+
+    push r12
     ret
+
+.end_minus:
+
+    xor rbx, rbx
+    sub rbx, rax
+    push rbx
+
+    push r12
+    ret
+
 
 
 
@@ -129,7 +170,7 @@ L0_OUT:
     xor eax, eax
     sub eax, r10d
     mov [Symbol], '-'
-    call _print_buffer
+    call _write
 
 .decimal_plus:
 
@@ -180,7 +221,7 @@ L0_OUT:
 
     mov dl, [r11]
     mov [Symbol], dl
-    call _print_buffer
+    call _write
 
     dec r10
     cmp r10, 0
@@ -197,7 +238,7 @@ L0_OUT:
 
 
 
-_print_buffer:
+_write:
     push rax     
     push rdi
     push rsi
@@ -220,11 +261,32 @@ _print_buffer:
     ret
 
 
+_read:
+    push rax     
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+
+    mov rax, 0            
+    mov rdi, 0            
+    mov rsi, Symbol       
+    mov rdx, 1          
+    syscall   
+
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+
+    ret 
+
 section         .data
 
 Symbol          db '0'
 EndSymbol       db 0x0a
-Numbers         db '0123456789ABCDEF'
+Numbers         db '0123456789'
 
 section         .bss
 
