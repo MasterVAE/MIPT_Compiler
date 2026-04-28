@@ -1,0 +1,41 @@
+make Programm = [Line]*, "\0"
+
+Block = "{", [Line]*, "}"
+
+Line = Assigment, ";"
+
+Assigment = Expression, ["=", Assigment]*
+
+Expression = Term, ["!=" | "==" | ">" | "<", Term]
+
+Term = Primar, ["+" | "-", Primar]*
+
+Primar = Element, ["*" | "|", Element]*
+
+Element = Brackets|Constant|System|Function|Variable
+
+Brackets = '(' Assigment ')'
+
+Constant = int
+
+Function = Identificator, Argument
+
+Variable = Identificator
+
+Identificator = [alnum]+
+
+System =  "in" 
+          | "out",   Argument 
+          | "if",    Argument, Block 
+          | "while", Argument, Block
+          | "func",  Identificator, Argument, Block
+          | "return" Assigment
+
+Argument = "(", [Assigment | None], [',' Assigment]*, ")"
+
+
+// VERIFICATION
+
+On the left from ASSIGN only VARIABLE
+On top of WHILE | IF | OUT | RETURN only LINE
+On top of fuction init only LINE;
