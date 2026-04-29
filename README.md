@@ -7,37 +7,11 @@
 - GNU make версии 4.4.1 и выше
 - dot grapwiz версии 14.0.5 и выше
 
-## Запуск
-
-```bash
-make all
-```
-или
-```bash
-make frontend_b
-make middlend_b
-make backend_b
-```
 
 ## Использование
 
 ```bash
 make run
-```
-или
-```bash
-make frontend
-make middlend
-make backend
-./asm.out
-./spu.out
-```
-или
-```bash
-./build/descent.out <code filename> <tree filename>
-./build/compilator.out <tree filename> <out filename>
-./asm.out
-./spu.out
 ```
 
 ## Описание
@@ -51,19 +25,19 @@ make backend
 Пример программы и ее дерева после оптимизации:
 
 ```
-fact(n)   #recursive factorial function
+phib(n)
 {
-    if(n == 1)
+    if(n > 2)
     {
-        return 1;
+        return(phib(n - 1) + phib(n - 2));
     };
 
-    return n * fact(n - 1);
+    return 1;
 };
 
-out(fact(in));
+out(phib(in));
 ```
 
 ![generated ](examples/images/tree1.png)
 
-Далее дерево передается в **backend**, где переводится в Ассемблерный код для [**SPU** (Soft Processor Unit)](https://github.com/MasterVAE/MIPT_Stack)
+Далее дерево передается в **backend**, где переводится в Ассемблерный код для **x86-64**

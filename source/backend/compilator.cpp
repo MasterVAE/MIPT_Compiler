@@ -100,7 +100,7 @@ static void CompileFunctions(FILE* file, Compilator* compilator)
     for(size_t i = 0; i < compilator->function_count; i++)
     {
         TreeNode* func = compilator->functions[i];
-        PRINT("L_%s:\n", func->left->value.identificator);
+        PRINT("L_%s:                ; функция %s\n", func->left->value.identificator, func->left->value.identificator);
         PRINT(  "   pop rcx\n");
         PRINT(  "   lea rax, [rbp + 16]\n"
                 "   mov [rax], rcx\n");
@@ -128,11 +128,13 @@ static void CompileArguments(TreeNode* node, FILE* file, Compilator* compilator)
     }
     else if(CheckOperation(node, OP_VARIABLE))
     {
+        const char* name = node->left->value.identificator;
+
         int i = VariableOffcet(node);
         if(i == -1) ERROR;
 
-        PRINT(  "   pop rax\n"
-                "   mov [rbp + %d], rax\n", (i + 3) * 8);
+        PRINT(  "   pop rax                             ; переменная %s\n"
+                "   mov [rbp + %d], rax\n", name, (i + 3) * 8);
     }
     else
     {
@@ -167,10 +169,12 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         }
         case OP_VARIABLE:
         {
+            const char* name = node->left->value.identificator;
+
             int i = VariableOffcet(node);
             if(i == -1) ERROR;
 
-            PRINT("\n   mov rax, [rbp + %d]\n", (i + 3) * 8);
+            PRINT("\n   mov rax, [rbp + %d]  ; переменная %s\n", (i + 3) * 8, name);
             PRINT(  "   push rax\n")
                     
             return;
@@ -180,7 +184,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT(  "   pop rax\n"
+            PRINT(  "   pop rax     ; сложение\n"
                     "   pop rbx\n"
                     "   add rax, rbx\n"
                     "   push rax\n");
@@ -192,7 +196,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax\n"
+            PRINT(  "   pop rax         ; вычитание\n"
                     "   pop rbx\n"
                     "   sub rax, rbx\n"
                     "   push rax\n");
@@ -203,7 +207,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax\n"
+            PRINT(  "   pop rax             ; умножение\n"
                     "   pop rbx\n"
                     "   mov rdx, 0\n"
                     "   imul rbx\n"
@@ -217,7 +221,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax\n"
+            PRINT(  "   pop rax             ; деление\n"
                     "   pop rbx\n"
                     "   mov rdx, 0\n"
                     "   idiv rbx\n"
@@ -229,12 +233,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             if(!node->left || !node->left->left) ERROR;
 
+            const char* name = node->left->value.identificator;
+
             int i = VariableOffcet(node->left);
             if(i == -1) ERROR;
 
             CompileNode(node->right, file, compilator);
 
-            PRINT(  "   pop rax\n");
+            PRINT(  "   pop rax             ; присваивание %s\n", name);
             PRINT(  "   mov [rbp + %d], rax\n", (i + 3) * 8);
 
             return;
@@ -243,13 +249,13 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             CompileNode(node->left, file, compilator);
            
-            PRINT(  "   call L0_OUT\n");
+            PRINT(  "   call L0_OUT         ; печать в stdout\n");
 
             return;
         }
         case OP_IN:
         {
-            PRINT(  "   call L0_IN\n");
+            PRINT(  "   call L0_IN          ; чтение из stdinma\n");
 
             return;
         }
