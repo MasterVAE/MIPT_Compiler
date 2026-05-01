@@ -1,6 +1,7 @@
 #include "tree.h"
 #include "tree_logger.h"
 #include "compilator.h"
+#include "nasm.h"
 
 int main(int argc, char** argv)
 {

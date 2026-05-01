@@ -93,8 +93,7 @@ all: frontend_b middlend_b backend_b
 
 run: frontend middlend backend
 	@nasm -f elf64 files/code.s -o build/code.o
-	@nasm -f elf64 source/backend/lib.s -o build/lib.o
-	@gcc build/code.o build/lib.o -no-pie -o build/code.out
+	@gcc build/code.o -no-pie -o build/code.out
 	@./build/code.out
 
 bld: all

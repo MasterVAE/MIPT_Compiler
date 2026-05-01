@@ -11,6 +11,9 @@ struct Compilator
 
     TreeNode** functions;
     size_t function_count;
+
+    size_t current_command;
+    char* buffer;
 };
 
 void CompileTree(Tree* tree, FILE* file);

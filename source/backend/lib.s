@@ -1,13 +1,3 @@
-DEFAULT REL
-section     .text
-
-global L0_EQUAL
-global L0_NEQUAL
-global L0_SMALLER
-global L0_BIGGER
-global L0_IN
-global L0_OUT
-
 L0_EQUAL: 
     pop rcx
 

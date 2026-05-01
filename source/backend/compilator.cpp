@@ -6,13 +6,33 @@
 #include "tree.h"
 #include "compilator.h"
 #include "scope.h"
+#include "nasm.h"
+
+#include "nasm.h"
 
 #define PRINT(...) fprintf(file, __VA_ARGS__);
+
+#define SET(buffer, size)                                                               \
+    memcpy(compilator->buffer + compilator->current_command, buffer, size);             \
+    compilator->current_command += size;
+
+#define SET_BYTE(byte)                                                                  \
+    compilator->buffer[compilator->current_command++] = byte;
+
+#define SET_VALUE(constant)                                                             \
+    {                                                                                   \
+        int value = constant;                                                           \ 
+        memcpy(compilator->buffer + compilator->current_command, &value, 4);            \
+        compilator->current_command += 4;                                               \
+    }   
+
 
 #define ERROR   {                                                                       \
                     fprintf(stderr, "%s:%d Compilator error\n", __FILE__, __LINE__);    \
                     return;                                                             \
                 }
+
+
 
 static Compilator* CreateCompilator();
 
@@ -24,6 +44,7 @@ static void CompileSystemCodeBefore(FILE* file, TreeNode* root);
 static void CompileSystemCodeAfter(FILE* file);
 static void CompileFunctions(FILE* file, Compilator* compilator);
 static void CompileArguments(TreeNode* node, FILE* file, Compilator* compilator);
+static void LinkLibrary(FILE* file);
 
 static size_t SearchFuncInNametable(Compilator* compilator, const char* identificator);
 
@@ -51,6 +72,10 @@ void CompileTree(Tree* tree, FILE* file)
 
     CompileFunctions(file, compilator);
 
+    LinkLibrary(file);
+
+    NasmCompile("files/prog.bin", compilator);
+
     DestroyCompilator(compilator);
 
     ClearNametables(tree);
@@ -61,23 +86,18 @@ static void CompileSystemCodeBefore(FILE* file, TreeNode* root)
     assert(file);
     assert(root);
 
-    PRINT(  "DEFAULT REL\n"
-            "section     .text\n\n"
-
-            "extern L0_EQUAL\n"
-            "extern L0_NEQUAL\n"
-            "extern L0_SMALLER\n"
-            "extern L0_BIGGER\n"
-            "extern L0_IN\n"
-            "extern L0_OUT\n\n"
-            "global main\n\n"
-
-            "main:\n"
-            "   sub rsp, 1024         ; создание базового фрейма\n"
-            "   lea rbp, [rsp + 8]\n"
-            "   lea rax, [rbp + 8]\n"
-            "   lea rbx, [rbp + %lu]\n"
-            "   mov [rax], rbx\n", (root->nametable->variable_count + 3)*8);
+    PRINT(  "DEFAULT REL\n");
+    PRINT(  "section     .text\n\n");
+    PRINT(  "global main\n\n");
+    PRINT(  "main:\n");
+    PRINT(  "   sub rsp, 1024         ; создание базового фрейма\n");
+    PRINT(  "   mov rbp, rsp\n");
+    PRINT(  "   add rbp, 8\n");
+    PRINT(  "   mov rax, rbp\n");
+    PRINT(  "   add rax, 8\n");
+    PRINT(  "   mov rbx, rbp\n");
+    PRINT(  "   add rbx, %lu\n", (root->nametable->variable_count + 3) * 8);
+    PRINT(  "   mov [rax], rbx\n");
 }
 
 
@@ -85,11 +105,11 @@ static void CompileSystemCodeAfter(FILE* file)
 {
     assert(file);
 
-    PRINT(  "_end:               ; syscall выхода из программы\n"
-            "   mov rax, 0x3C\n"
-            "   xor rdi, rdi\n"
-            "   syscall\n"
-    )
+    PRINT(  "_end:               ; syscall выхода из программы\n");
+    PRINT(  "   mov rax, 0x3C\n");
+    PRINT(  "   xor rdi, rdi\n");
+    PRINT(  "   syscall\n");
+
 }
 
 static void CompileFunctions(FILE* file, Compilator* compilator)
@@ -102,15 +122,18 @@ static void CompileFunctions(FILE* file, Compilator* compilator)
         TreeNode* func = compilator->functions[i];
         PRINT("L_%s:                ; функция %s\n", func->left->value.identificator, func->left->value.identificator);
         PRINT(  "   pop rcx\n");
-        PRINT(  "   lea rax, [rbp + 16]\n"
-                "   mov [rax], rcx\n");
+        PRINT(  "   mov rax, rbp\n");
+        PRINT(  "   add rax, 16\n");
+        PRINT(  "   mov [rax], rcx\n");
         CompileArguments(func->right->left, file, compilator);
         CompileNode(func->right->right, file, compilator);
 
-        PRINT("\n   lea rax, [rbp + 16]\n"
-                "   push [rax]\n"
-                "   mov rbp, [rbp]\n"
-                "   ret\n");
+        PRINT("\n   mov rax, rbp\n");
+        PRINT(  "   add rax, 16\n");
+        PRINT(  "   mov rax, [rax]\n");
+        PRINT(  "   push rax\n");
+        PRINT(  "   mov rbp, [rbp]\n");
+        PRINT(  "   ret\n");
     }
 }
 
@@ -133,8 +156,10 @@ static void CompileArguments(TreeNode* node, FILE* file, Compilator* compilator)
         int i = VariableOffcet(node);
         if(i == -1) ERROR;
 
-        PRINT(  "   pop rax                             ; переменная %s\n"
-                "   mov [rbp + %d], rax\n", name, (i + 3) * 8);
+        PRINT(  "   pop rax                             ; переменная %s\n", name);
+        PRINT(  "   mov rbx, rbp\n");
+        PRINT(  "   add rbx, %d\n", (i + 3) * 8);
+        PRINT(  "   mov [rbp + %d], rax\n", (i + 3) * 8);
     }
     else
     {
@@ -155,7 +180,13 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
     if(node->type == NODE_CONSTANT)
     {
         PRINT(  "   mov rax, %d\n", node->value.constant);
+        SET_BYTE(0x48);
+        SET_BYTE(0xC7);
+        SET_BYTE(0b11000000);
+        SET_VALUE(node->value.constant);
+
         PRINT(  "   push rax\n");
+        SET_BYTE(0x50);
         return;
     }
 
@@ -174,8 +205,12 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             int i = VariableOffcet(node);
             if(i == -1) ERROR;
 
-            PRINT("\n   mov rax, [rbp + %d]  ; переменная %s\n", (i + 3) * 8, name);
-            PRINT(  "   push rax\n")
+            PRINT("\n   mov rbx, rbp           ; переменная %s\n", name);
+            PRINT("     add rbx, %d   \n", (i + 3) * 8)
+            PRINT("\n   mov rax, [rbx]\n");
+
+            PRINT(  "   push rax\n");
+            SET_BYTE(0x50);
                     
             return;
         }
@@ -184,11 +219,16 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
             CompileNode(node->right, file, compilator);
 
-            PRINT(  "   pop rax     ; сложение\n"
-                    "   pop rbx\n"
-                    "   add rax, rbx\n"
-                    "   push rax\n");
+            PRINT(  "   pop rax     ; сложение\n");
+            SET_BYTE(0x58);
 
+            PRINT(  "   pop rbx\n");
+            SET_BYTE(0x5B);
+
+            PRINT(  "   add rax, rbx\n");
+
+            PRINT(  "   push rax\n");
+            SET_BYTE(0x50);
             return;
         }
         case OP_SUB:
@@ -196,10 +236,16 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax         ; вычитание\n"
-                    "   pop rbx\n"
-                    "   sub rax, rbx\n"
-                    "   push rax\n");
+            PRINT(  "   pop rax         ; вычитание\n");
+            SET_BYTE(0x58);
+
+            PRINT(  "   pop rbx\n");
+            SET_BYTE(0x5B);
+
+            PRINT(  "   sub rax, rbx\n");
+
+            PRINT(  "   push rax\n");
+            SET_BYTE(0x50);
             return;
         }
         case OP_MUL:
@@ -207,12 +253,17 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax             ; умножение\n"
-                    "   pop rbx\n"
-                    "   mov rdx, 0\n"
-                    "   imul rbx\n"
-                    "   push rax\n");
+            PRINT(  "   pop rax             ; умножение\n");
+            SET_BYTE(0x58);
 
+            PRINT(  "   pop rbx\n");
+            SET_BYTE(0x5B);
+
+            PRINT(  "   mov rdx, 0\n");
+            PRINT(  "   imul rbx\n");
+
+            PRINT(  "   push rax\n");
+            SET_BYTE(0x50);
 
             return;
         }
@@ -221,11 +272,17 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
 
-            PRINT(  "   pop rax             ; деление\n"
-                    "   pop rbx\n"
-                    "   mov rdx, 0\n"
-                    "   idiv rbx\n"
-                    "   push rax\n");
+            PRINT(  "   pop rax             ; деление\n");
+            SET_BYTE(0x58);
+
+            PRINT(  "   pop rbx\n");
+            SET_BYTE(0x5B);
+
+            PRINT(  "   mov rdx, 0\n");
+            PRINT(  "   idiv rbx\n");
+
+            PRINT(  "   push rax\n");
+            SET_BYTE(0x50);
 
             return;
         }
@@ -241,7 +298,11 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   pop rax             ; присваивание %s\n", name);
-            PRINT(  "   mov [rbp + %d], rax\n", (i + 3) * 8);
+            SET_BYTE(0x58);
+
+            PRINT(  "   mov rbx, rbp\n");
+            PRINT(  "   add rbx, %d\n", (i + 3) * 8)
+            PRINT(  "   mov [rbx], rax\n");
 
             return;
         }
@@ -265,6 +326,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             CompileNode(node->left, file, compilator);
             PRINT(  "   pop rax\n");
+            SET_BYTE(0x58);
+
             PRINT(  "   mov rbx, 0\n");
             PRINT(  "   cmp rax, rbx\n");
 
@@ -286,6 +349,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax\n");
+            SET_BYTE(0x58);
+
             PRINT(  "   mov rbx, 0\n");
             PRINT(  "   cmp rax, rbx\n");
 
@@ -366,14 +431,17 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             CompileNode(node->right, file, compilator);
             
-            PRINT("\n   lea rax, [rbp + 8]          ; создание стекового фрейма для вызываемой функции\n");
+            PRINT("\n   mov rax, rbp          ; создание стекового фрейма для вызываемой функции\n");
+            PRINT(  "   add rax, 8\n");
             PRINT(  "   mov rax, [rax]\n");
             PRINT(  "   mov [rax], rbp\n");
 
             PRINT(  "   mov rbp, rax\n");
 
-            PRINT(  "   lea rax, [rbp + 8]\n");
-            PRINT(  "   lea rbx, [rbp + %lu]\n", (3 + callee_vars) * 8);
+            PRINT(  "   mov rax, rbp\n");
+            PRINT(  "   add rax, 8\n");
+            PRINT(  "   mov rbx, rbp\n");
+            PRINT(  "   add rbx, %lu\n", (3 + callee_vars) * 8);
             PRINT(  "   mov [rax], rbx\n");
             PRINT(  "   call L_%s\n", node->left->value.identificator);
 
@@ -383,10 +451,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             if(node->left)  CompileNode(node->left, file, compilator);
 
-            PRINT("\n   lea rax, [rbp + 16]             ;return\n"
-                    "   push [rax]\n"
-                    "   mov rbp, [rbp]\n"
-                    "   ret\n");
+            PRINT("\n   mov rax, rbp             ;return\n");
+            PRINT(  "   add rax, 16\n");
+            PRINT(  "   mov rax, [rax]\n");
+            PRINT(  "   push rax\n");
+            PRINT(  "   mov rbp, [rbp]\n");
+
+            PRINT(  "   ret\n");
+            SET_BYTE(0xC3);
 
             return;
         }
@@ -427,6 +499,10 @@ static Compilator* CreateCompilator()
         return NULL;
     }
 
+    comp->buffer = (char*)calloc(2048, sizeof(char));
+    if(!comp->buffer) return NULL;
+    comp->current_command = 0;
+
     return comp;
 }
 
@@ -435,6 +511,7 @@ static void DestroyCompilator(Compilator* compilator)
     if(!compilator) return;
 
     free(compilator->functions);
+    free(compilator->buffer);
     free(compilator);
 }
 
@@ -454,4 +531,19 @@ static size_t SearchFuncInNametable(Compilator* compilator, const char* identifi
     }
 
     return i;
+}
+
+static void LinkLibrary(FILE* file)
+{
+    assert(file);
+
+    FILE* file_lib = fopen("source/backend/lib.s", "r+");
+    if(!file_lib) return;
+
+    char buffer = 0;
+
+    while((buffer = fgetc(file_lib)) != EOF)
+    {
+        fputc(buffer, file);
+    }
 }
