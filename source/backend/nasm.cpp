@@ -10,6 +10,15 @@
 
 const char* BINARY_FILENAME = "files/prog.bin";
 
+void InsertHeader(char* buffer, Compilator* compilator);
+void InsertProg(char* buffer, Compilator* compilator);
+void InsertData(char* buffer);
+void InsertSections(char* buffer, Compilator* compilator);
+
+static void Disasm(char* buffer);
+static void DisasmFile(char* buffer, const char* filename, size_t size);
+
+
 struct  Elf64_Ehdr_my
 {
     unsigned char e_ident[16]; // Магическое число и информация о файле
@@ -67,6 +76,23 @@ void NasmCompile(const char* filename, Compilator* compilator)
     char* buffer = (char*)calloc(0x2168, sizeof(char));
 
 
+    InsertHeader(buffer, compilator);
+    InsertProg(buffer, compilator);
+    InsertData(buffer);
+    InsertSections(buffer, compilator);
+
+    Disasm(buffer);
+
+    fwrite(buffer, 0x2168, 1, binary_file);
+    free(buffer);
+
+    fclose(file);
+    fclose(binary_file);
+
+}
+
+void InsertHeader(char* buffer, Compilator* compilator)
+{
     Elf64_Ehdr_my elf_header = 
     {
         .e_ident = {0x7f, 'E', 'L', 'F', 2, 1, 1, 0},
@@ -115,23 +141,21 @@ void NasmCompile(const char* filename, Compilator* compilator)
     memcpy(buffer + 0x40, &text_header, sizeof(text_header));
     memcpy(buffer + 0x78, &data_header, sizeof(data_header));
 
-    unsigned char text_bytes[] = 
-    {
-        0xB8, 0x3C, 0x00, 0x00, 0x00,  // mov eax, 60
-        0x31, 0xFF,                      // xor edi, edi
-        0x0F, 0x05                       // syscall
-    };
-    size_t code_size = sizeof(text_bytes); // 9 байт
-    memcpy(buffer + 0x1000, text_bytes, code_size);
+}
 
 
-    // Вот сюда вставлем прогу
+void InsertProg(char* buffer, Compilator* compilator)
+{
+    assert(buffer);
+    assert(compilator);
 
-    printf("Code %d/%d\n", compilator->current_command, 0x1000);
+    printf("Code %lu/%d\n", compilator->current_command, 0x1000);
     memcpy(buffer + 0x1000, compilator->buffer, compilator->current_command);
+}
 
-    // Вот до сюда
-
+void InsertData(char* buffer)
+{
+    assert(buffer);
     // Данные .data
     unsigned char data_bytes[] = {
         0x30,                         // '0'
@@ -143,7 +167,12 @@ void NasmCompile(const char* filename, Compilator* compilator)
     const char* shstrtab = "\0.shstrtab\0.text\0.data\0.bss\0";
     size_t shstrtab_size = 28;
     memcpy(buffer + 0x200C, shstrtab, shstrtab_size);   
+}
 
+void InsertSections(char* buffer, Compilator* compilator)
+{
+    assert(buffer);
+    assert(compilator);
 
     Elf64_Shdr_my shdr_null = {0}; // нулевая секция
 
@@ -206,11 +235,31 @@ void NasmCompile(const char* filename, Compilator* compilator)
     memcpy(buffer + shoff + 128, &shdr_data, 64);
     memcpy(buffer + shoff + 192, &shdr_bss, 64);
     memcpy(buffer + shoff + 256, &shdr_shstrtab, 64);
+}
 
-    fwrite(buffer, 0x2168, 1, binary_file);
-    free(buffer);
+static void Disasm(char* buffer)
+{
+    assert(buffer);
+
+    DisasmFile(buffer + 0x200, "source/backend/lib/bigger", 0x200);
+    DisasmFile(buffer + 0x400, "source/backend/lib/smaller", 0x200);
+    DisasmFile(buffer + 0x600, "source/backend/lib/equal", 0x200);
+    DisasmFile(buffer + 0x800, "source/backend/lib/nequal", 0x200);
+    DisasmFile(buffer + 0xA00, "source/backend/lib/out", 0x300);
+    DisasmFile(buffer + 0xD00, "source/backend/lib/in", 0x300);
+}
+
+
+static void DisasmFile(char* buffer, const char* filename, size_t size)
+{
+    assert(filename);
+    assert(buffer);
+
+    FILE* file = fopen(filename, "rb+");
+    if(!file) return;
+
+    fseek(file, 0x1000, SEEK_SET);
+    fread(buffer, size, 1, file);
 
     fclose(file);
-    fclose(binary_file);
-
 }

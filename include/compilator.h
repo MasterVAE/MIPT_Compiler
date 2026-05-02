@@ -5,6 +5,19 @@
 
 #include "tree.h"
 
+struct Label
+{
+    size_t command_offset;
+    char* name;
+};
+
+struct Jump
+{
+    size_t command_offset;
+    size_t write_offset;
+    char* name;
+};
+
 struct Compilator
 {
     size_t current_label;
@@ -14,6 +27,12 @@ struct Compilator
 
     size_t current_command;
     char* buffer;
+
+    Label* lables;
+    size_t lable_count;
+
+    Jump* jumps;
+    size_t jump_count;
 };
 
 void CompileTree(Tree* tree, FILE* file);
