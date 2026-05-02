@@ -8,7 +8,6 @@
 #include "compilator.h"
 #include "nasm.h"
 
-const char* BINARY_FILENAME = "files/prog.bin";
 
 void InsertHeader(char* buffer, Compilator* compilator);
 void InsertProg(char* buffer, Compilator* compilator);
@@ -67,10 +66,8 @@ struct Elf64_Shdr_my
 void NasmCompile(const char* filename, Compilator* compilator)
 {
     assert(filename);
-    FILE* file = fopen(filename, "r+");
-    if(!file) return;
 
-    FILE* binary_file = fopen(BINARY_FILENAME, "w+");
+    FILE* binary_file = fopen(filename, "w+");
     if(!binary_file) return;
 
     char* buffer = (char*)calloc(0x2168, sizeof(char));
@@ -86,7 +83,6 @@ void NasmCompile(const char* filename, Compilator* compilator)
     fwrite(buffer, 0x2168, 1, binary_file);
     free(buffer);
 
-    fclose(file);
     fclose(binary_file);
 
 }
@@ -119,8 +115,8 @@ void InsertHeader(char* buffer, Compilator* compilator)
         .p_offset = 0,
         .p_vaddr = 0x400000,
         .p_paddr = 0,
-        .p_filesz = 0x1000 + compilator->current_command,
-        .p_memsz = 0x1000 + compilator->current_command,
+        .p_filesz = 0x2000,
+        .p_memsz = 0x2000,
         .p_align = 0x1000
     };
 
@@ -150,7 +146,7 @@ void InsertProg(char* buffer, Compilator* compilator)
     assert(compilator);
 
     printf("Code %lu/%d\n", compilator->current_command, 0x1000);
-    memcpy(buffer + 0x1000, compilator->buffer, compilator->current_command);
+    memcpy(buffer + 0x1000, compilator->buffer, 0x1000);
 }
 
 void InsertData(char* buffer)
@@ -182,7 +178,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_flags     = 0x6,  // SHF_ALLOC | SHF_EXECINSTR (2+4=6)
         .sh_addr      = 0x401000,
         .sh_offset    = 0x1000,
-        .sh_size      = compilator->current_command,    // code_size was 9
+        .sh_size      = 0x1000,    // code_size was 9
         .sh_link      = 0,
         .sh_info      = 0,
         .sh_addralign = 16,
@@ -241,12 +237,12 @@ static void Disasm(char* buffer)
 {
     assert(buffer);
 
-    DisasmFile(buffer + 0x200, "source/backend/lib/bigger", 0x200);
-    DisasmFile(buffer + 0x400, "source/backend/lib/smaller", 0x200);
-    DisasmFile(buffer + 0x600, "source/backend/lib/equal", 0x200);
-    DisasmFile(buffer + 0x800, "source/backend/lib/nequal", 0x200);
-    DisasmFile(buffer + 0xA00, "source/backend/lib/out", 0x300);
-    DisasmFile(buffer + 0xD00, "source/backend/lib/in", 0x300);
+    DisasmFile(buffer + 0x1200, "source/backend/lib/bigger", 0x200);
+    DisasmFile(buffer + 0x1400, "source/backend/lib/smaller", 0x200);
+    DisasmFile(buffer + 0x1600, "source/backend/lib/equal", 0x200);
+    DisasmFile(buffer + 0x1800, "source/backend/lib/nequal", 0x200);
+    DisasmFile(buffer + 0x1A00, "source/backend/lib/out", 0x300);
+    DisasmFile(buffer + 0x1D00, "source/backend/lib/in", 0x300);
 }
 
 

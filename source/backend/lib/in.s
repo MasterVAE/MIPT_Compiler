@@ -1,4 +1,4 @@
-DEFAULT ABS
+DEFAULT REL
 global _start
 _start: 
     pop r12
@@ -57,7 +57,7 @@ _read:
 
     mov rax, 0            
     mov rdi, 0            
-    mov rsi, 0x2000     
+    mov rsi, 0x402000     
     mov rdx, 1          
     syscall   
 

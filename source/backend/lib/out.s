@@ -1,4 +1,4 @@
-DEFAULT ABS
+DEFAULT REL
 global _start
 _start: 
     pop rcx
@@ -41,7 +41,8 @@ _start:
 
     mov r11, 63 + 0x402010
     sub r11, r10
-    mov sil, byte ['0' + rdx]       
+    mov sil, dl 
+    add sil, '0' 
     mov byte [r11], sil   
 
     inc r10
@@ -91,6 +92,7 @@ _write:
     push rsi
     push rdx
     push rcx
+    push r10
 
     mov rax, 0x01           ;syscall печати буффера
     mov rdi, 1
@@ -99,6 +101,7 @@ _write:
     mov dl, 1
     syscall
 
+    pop r10
     pop rcx
     pop rdx
     pop rsi

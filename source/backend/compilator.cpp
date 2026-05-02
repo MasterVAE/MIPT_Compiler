@@ -52,6 +52,7 @@ static void LinkLibrary(FILE* file);
 
 static void AddLabel(Compilator* comp, char* name);
 static void AddJump(Compilator* comp, char* name);
+static void StaticJump(Compilator* comp, size_t adress);
 static void CompileJumps(Compilator* comp);
 
 static size_t SearchFuncInNametable(Compilator* compilator, const char* identificator);
@@ -402,6 +403,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_OUT         ; печать в stdout\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0xA00);
+
 
             return;
         }
@@ -409,6 +412,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             PRINT(  "   call L0_IN          ; чтение из stdinma\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0xD00);
+
 
             return;
         }
@@ -479,6 +484,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_EQUAL\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0x600);
+
             return;
         }
         case OP_NEQUAL:
@@ -488,6 +495,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_NEQUAL\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0x800);
             return;
         }
         case OP_SMALLER:
@@ -497,6 +505,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_SMALLER\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0x400);
             return;
         }
         case OP_BIGGER:
@@ -506,6 +515,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_BIGGER\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            StaticJump(compilator, 0x200);
             return;
         }
         case OP_FUNCTION:
@@ -570,7 +580,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x18);  
 
             PRINT(  "   call L_%s\n", node->left->value.identificator);
-            SET_BYTE(0xE8); SET_VALUE(0);                      // call rel32 (placeholder 0)
+            SET_BYTE(0xE8); SET_VALUE(0);                
             JUMP("L_%s", node->left->value.identificator);
 
             return;
@@ -733,6 +743,13 @@ static void AddJump(Compilator* comp, char* name)
     comp->jumps[i].name = strdup(name);
     comp->jumps[i].command_offset = offset;
     comp->jumps[i].write_offset = offset - 4;
+}
+
+static void StaticJump(Compilator* comp, size_t adress)
+{
+    assert(comp);
+    size_t offset = adress - comp->current_command;
+    memcpy(comp->buffer + comp->current_command - 4, &offset, 4);
 }
 
 static void CompileJumps(Compilator* comp)
