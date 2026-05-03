@@ -317,6 +317,18 @@ static TreeNode* System(Program* prog)
 
         node = CreateNode(NODE_OPERATION, NodeValue {.operation = OP_OUT}, Argument(prog));
     }
+    else if(CheckOperation(CURRENT, OP_DRAW))
+    {
+        prog->current_token++;
+
+        node = CreateNode(NODE_OPERATION, NodeValue {.operation = OP_DRAW});
+    }
+    else if(CheckOperation(CURRENT, OP_SET))
+    {
+        prog->current_token++;
+
+        node = CreateNode(NODE_OPERATION, NodeValue {.operation = OP_SET}, Argument(prog));
+    }
     else if(CheckOperation(CURRENT, OP_IF))
     {
         prog->current_token++;

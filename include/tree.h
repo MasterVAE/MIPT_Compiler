@@ -35,7 +35,9 @@ enum Operation
     OP_BRACKET_CLOSE,
     OP_FBRACKET_OPEN,
     OP_FBRACKET_CLOSE,
-    OP_COMMA
+    OP_COMMA,
+    OP_SET,
+    OP_DRAW
 };
 
 union NodeValue

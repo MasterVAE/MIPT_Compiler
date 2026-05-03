@@ -27,6 +27,8 @@ static Oper OP_DATA[] =
     {OP_IF,             "IF",       "if",       "darkolivegreen3"},
     {OP_IN,             "IN",       "in",       "darkolivegreen3"},
     {OP_OUT,            "OUT",      "out",      "darkolivegreen3"},
+    {OP_SET,            "SET",      "set",      "darkolivegreen3"},
+    {OP_DRAW,           "DRAW",     "draw",     "darkolivegreen3"},
     {OP_RETURN,         "RETURN",   "return",   "darkolivegreen3"},
     {OP_BRACKET_OPEN,   NULL,       "("},
     {OP_BRACKET_CLOSE,  NULL,       ")"},
@@ -37,7 +39,7 @@ static Oper OP_DATA[] =
     {OP_EMPTY,          "EMPTY",    NULL,       "aliceblue"},
     {OP_VARIABLE,       "VARIABLE", NULL,       "aliceblue"},
     {OP_FUNCTION,       "FUNCTION", NULL,       "aliceblue"},
-    {OP_ARGUMENT,       "ARGUMENT", NULL,       "aliceblue"}
+    {OP_ARGUMENT,       "ARGUMENT", NULL,       "aliceblue"},
 };
 
 const size_t OP_COUNT = sizeof(OP_DATA)/sizeof(OP_DATA[0]);

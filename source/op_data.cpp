@@ -41,7 +41,6 @@ size_t GetOpByName(const char* name)
     {
         Oper data = OP_DATA[i];
         if(!data.op_name) continue;
-
         if(!strncmp(name, data.op_name, strlen(data.op_name)))
         {
             return i;
@@ -61,7 +60,6 @@ size_t GetOpByCode(const char* code)
     {
         Oper data = OP_DATA[i];
         if(!data.op_code) continue;
-
         if(!strncmp(code, data.op_code, strlen(data.op_code)))
         {
             return i;

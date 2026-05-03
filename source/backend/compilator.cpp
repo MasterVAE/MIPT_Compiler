@@ -402,7 +402,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   call L0_OUT         ; печать в stdout\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            SET_BYTE(0xE8); SET_VALUE(0);                     
             StaticJump(compilator, 0xA00);
 
 
@@ -411,7 +411,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         case OP_IN:
         {
             PRINT(  "   call L0_IN          ; чтение из stdinma\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            SET_BYTE(0xE8); SET_VALUE(0);                     
             StaticJump(compilator, 0xD00);
 
 
@@ -434,7 +434,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             SET_BYTE(0x48); SET_BYTE(0x39); SET_BYTE(0xD8);
 
             PRINT(  "   je .L%lu\n", lable);
-            SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     // je rel32 (placeholder 0)
+            SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     
             JUMP(".L%lu", lable);
 
             CompileNode(node->right, file, compilator);
@@ -464,13 +464,13 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             SET_BYTE(0x48); SET_BYTE(0x39); SET_BYTE(0xD8);
 
             PRINT(  "   je .L%lu\n", label2);
-            SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     // je rel32 (placeholder 0)
+            SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     
             JUMP(".L%lu", label2);
 
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   jmp .L%lu\n", label1);
-            SET_BYTE(0xE9); SET_VALUE(0);                     // jmp rel32 (placeholder 0)
+            SET_BYTE(0xE9); SET_VALUE(0);                     
             JUMP(".L%lu", label1);
 
             PRINT(".L%lu:\n", label2);
@@ -483,8 +483,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_EQUAL\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
-            StaticJump(compilator, 0x600);
+            SET_BYTE(0xE8); SET_VALUE(0);                     
+            StaticJump(compilator, 0x400);
 
             return;
         }
@@ -494,8 +494,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_NEQUAL\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
-            StaticJump(compilator, 0x800);
+            SET_BYTE(0xE8); SET_VALUE(0);                     
+            StaticJump(compilator, 0x400);
             return;
         }
         case OP_SMALLER:
@@ -504,8 +504,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_SMALLER\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
-            StaticJump(compilator, 0x400);
+            SET_BYTE(0xE8); SET_VALUE(0);                     
+            StaticJump(compilator, 0x300);
             return;
         }
         case OP_BIGGER:
@@ -514,7 +514,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_BIGGER\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     // call rel32 (placeholder 0)
+            SET_BYTE(0xE8); SET_VALUE(0);                     
             StaticJump(compilator, 0x200);
             return;
         }
@@ -615,6 +615,21 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             CompileNode(node->right, file, compilator);
             CompileNode(node->left, file, compilator);
+            return;
+        }
+        case OP_SET:
+        {
+            CompileNode(node->left, file, compilator);   
+            PRINT(  "   call L0_SET          ; запись в буффер \n");
+            SET_BYTE(0xE8); SET_VALUE(0);                     
+            StaticJump(compilator, 0x600);
+            return;
+        }
+        case OP_DRAW:
+        {
+            PRINT(  "   call L0_DRAW         ; печать буффера \n");
+            SET_BYTE(0xE8); SET_VALUE(0);                     
+            StaticJump(compilator, 0x800);
             return;
         }
         case OP_EMPTY:

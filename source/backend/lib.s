@@ -184,7 +184,8 @@ L0_OUT:
 
     mov r11, 63 + Num_buffer
     sub r11, r10
-    mov sil, byte [Numbers + rdx]       
+    mov sil, '0'
+    add sil, dl     
     mov byte [r11], sil   
 
     inc r10
@@ -272,11 +273,61 @@ _read:
 
     ret 
 
+
+
+L0_DRAW:
+    xor rsi, rsi
+    xor rdi, rdi
+
+.cycle_y:
+
+    xor rsi, rsi
+.cycle_x:
+
+    mov rax, rdi
+    add rax, rsi
+
+    lea rbx, [Draw_buffer + rax]
+    mov cl, [rbx]
+    mov [Symbol], cl
+    call _write
+
+    inc rsi
+    cmp rsi, 10
+    jl .cycle_x
+
+    mov [Symbol], 0x0a
+    call _write
+
+    add rdi, 10
+    cmp rdi, 100
+    jl .cycle_y
+
+    ret;
+
+L0_SET:
+    pop rcx
+    pop rsi
+    pop rdi
+    push rcx
+
+    mov rax, rdi
+    mov rbx, 10
+    imul rbx
+    add rax, rsi
+
+    mov [Draw_buffer + rax], '0'
+    ret
+
+
+
+
 section         .data
 
 Symbol          db '0'
 EndSymbol       db 0x0a
 Numbers         db '0123456789'
+Draw_buffer times 100 db '_'
 
 section         .bss
 
