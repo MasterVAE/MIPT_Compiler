@@ -11,5 +11,5 @@ _start:
     imul rbx
     add rax, rsi
 
-    mov [0x402002 + rax], '0'
+    mov [0x403002 + rax], '0'
     ret

@@ -12,16 +12,16 @@ _start:
     mov rax, rdi
     add rax, rsi
 
-    lea rbx, [0x402002 + rax]
+    lea rbx, [0x403002 + rax]
     mov cl, [rbx]
-    mov [0x402000], cl
+    mov [0x403000], cl
     call _write
 
     inc rsi
     cmp rsi, 10
     jl .cycle_x
 
-    mov [0x402000], 0x0a
+    mov [0x403000], 0x0a
     call _write
 
     add rdi, 10
@@ -39,7 +39,7 @@ _write:
 
     mov rax, 0x01           ;syscall печати буффера
     mov rdi, 1
-    mov rsi, 0x402000
+    mov rsi, 0x403000
     xor rdx, rdx
     mov dl, 1
     syscall

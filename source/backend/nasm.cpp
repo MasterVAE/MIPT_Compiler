@@ -70,7 +70,7 @@ void NasmCompile(const char* filename, Compilator* compilator)
     FILE* binary_file = fopen(filename, "w+");
     if(!binary_file) return;
 
-    char* buffer = (char*)calloc(0x4000, sizeof(char));
+    char* buffer = (char*)calloc(0x5000, sizeof(char));
 
     InsertHeader(buffer, compilator);
     InsertProg(buffer, compilator);
@@ -95,7 +95,7 @@ void InsertHeader(char* buffer, Compilator* compilator)
         .e_version = 1,
         .e_entry = 0x401000,
         .e_phoff = 64,
-        .e_shoff = 0x2100,
+        .e_shoff = 0x3100,
         .e_flags = 0,
         .e_ehsize = 64,
         .e_phentsize = 56,
@@ -112,8 +112,8 @@ void InsertHeader(char* buffer, Compilator* compilator)
         .p_offset = 0,
         .p_vaddr = 0x400000,
         .p_paddr = 0,
-        .p_filesz = 0x2000,
-        .p_memsz = 0x2000,
+        .p_filesz = 0x3000,
+        .p_memsz = 0x3000,
         .p_align = 0x1000
     };
 
@@ -121,8 +121,8 @@ void InsertHeader(char* buffer, Compilator* compilator)
     {
         .p_type = 1,
         .p_flags = 6,
-        .p_offset = 0x2000,
-        .p_vaddr = 0x402000,
+        .p_offset = 0x3000,
+        .p_vaddr = 0x403000,
         .p_paddr = 0,
         .p_filesz = 102,
         .p_memsz = 166,
@@ -139,8 +139,8 @@ void InsertProg(char* buffer, Compilator* compilator)
     assert(buffer);
     assert(compilator);
 
-    printf("Code %lu/%d\n", compilator->current_command, 0x1000);
-    memcpy(buffer + 0x1000, compilator->buffer, 0x1000);
+    printf("Code %lu/%d\n", compilator->current_command, 0x2000);
+    memcpy(buffer + 0x1000, compilator->buffer, 0x2000);
 }
 
 void InsertData(char* buffer)
@@ -153,11 +153,11 @@ void InsertData(char* buffer)
     for (int i = 2; i < 102; ++i)
         data_bytes[i] = '_';
 
-    memcpy(buffer + 0x2000, data_bytes, sizeof(data_bytes));
+    memcpy(buffer + 0x3000, data_bytes, sizeof(data_bytes));
 
     const char* shstrtab = "\0.shstrtab\0.text\0.data\0.bss\0";
     size_t shstrtab_size = 28;
-    memcpy(buffer + 0x2066, shstrtab, shstrtab_size);
+    memcpy(buffer + 0x3066, shstrtab, shstrtab_size);
 }
 
 void InsertSections(char* buffer, Compilator* compilator)
@@ -173,7 +173,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_flags     = 0x6,
         .sh_addr      = 0x401000,
         .sh_offset    = 0x1000,
-        .sh_size      = 0x1000,
+        .sh_size      = 0x2000,
         .sh_link      = 0,
         .sh_info      = 0,
         .sh_addralign = 16,
@@ -184,8 +184,8 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_name      = 17,
         .sh_type      = 1,
         .sh_flags     = 0x3,
-        .sh_addr      = 0x402000,
-        .sh_offset    = 0x2000,
+        .sh_addr      = 0x403000,
+        .sh_offset    = 0x3000,
         .sh_size      = 102,
         .sh_link      = 0,
         .sh_info      = 0,
@@ -197,7 +197,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_name      = 23,
         .sh_type      = 8,
         .sh_flags     = 0x3,
-        .sh_addr      = 0x402010,
+        .sh_addr      = 0x403010,
         .sh_offset    = 0,
         .sh_size      = 64,
         .sh_link      = 0,
@@ -211,7 +211,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_type      = 3,
         .sh_flags     = 0,
         .sh_addr      = 0,
-        .sh_offset    = 0x2066,
+        .sh_offset    = 0x3066,
         .sh_size      = 28,
         .sh_link      = 0,
         .sh_info      = 0,
@@ -219,7 +219,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_entsize   = 0
     };
 
-    int shoff = 0x2100;
+    int shoff = 0x3100;
     memcpy(buffer + shoff, &shdr_null, 64);
     memcpy(buffer + shoff + 64, &shdr_text, 64);
     memcpy(buffer + shoff + 128, &shdr_data, 64);
@@ -231,14 +231,14 @@ static void Disasm(char* buffer)
 {
     assert(buffer);
 
-    DisasmFile(buffer + 0x1200, "source/backend/lib/bigger", 0x100);
-    DisasmFile(buffer + 0x1300, "source/backend/lib/smaller", 0x100);
-    DisasmFile(buffer + 0x1400, "source/backend/lib/equal", 0x100);
-    DisasmFile(buffer + 0x1500, "source/backend/lib/nequal", 0x100);
-    DisasmFile(buffer + 0x1600, "source/backend/lib/set", 0x200);
-    DisasmFile(buffer + 0x1800, "source/backend/lib/draw", 0x200);
-    DisasmFile(buffer + 0x1A00, "source/backend/lib/out", 0x300);
-    DisasmFile(buffer + 0x1D00, "source/backend/lib/in", 0x300);
+    DisasmFile(buffer + 0x2200, "source/backend/lib/bigger", 0x100);
+    DisasmFile(buffer + 0x2300, "source/backend/lib/smaller", 0x100);
+    DisasmFile(buffer + 0x2400, "source/backend/lib/equal", 0x100);
+    DisasmFile(buffer + 0x2500, "source/backend/lib/nequal", 0x100);
+    DisasmFile(buffer + 0x2600, "source/backend/lib/set", 0x200);
+    DisasmFile(buffer + 0x2800, "source/backend/lib/draw", 0x200);
+    DisasmFile(buffer + 0x2A00, "source/backend/lib/out", 0x300);
+    DisasmFile(buffer + 0x2D00, "source/backend/lib/in", 0x300);
 }
 
 static void DisasmFile(char* buffer, const char* filename, size_t size)

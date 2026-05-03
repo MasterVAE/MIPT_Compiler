@@ -16,14 +16,14 @@ _start:
     mov r10d, eax
     xor eax, eax
     sub eax, r10d
-    mov [0x402000], '-'
+    mov [0x403000], '-'
     call _write
 
 .decimal_plus:
 
     mov r10, 8
 .dec_clean_loop:                ; очистка буффера чисел
-    mov r11, 64 + 0x402010
+    mov r11, 64 + 0x403010
     sub r11, r10
     mov byte [r11], 0     
 
@@ -39,7 +39,7 @@ _start:
     xor rdx, rdx
     div esi
 
-    mov r11, 63 + 0x402010
+    mov r11, 63 + 0x403010
     sub r11, r10
     mov sil, dl 
     add sil, '0' 
@@ -51,7 +51,7 @@ _start:
 
     mov r10, 8
 .dec_zero_loop:                 ; выкидыш старших нулей
-    mov r11, 64 + 0x402010
+    mov r11, 64 + 0x403010
     sub r11, r10
 
     mov dl, [r11]
@@ -64,11 +64,11 @@ _start:
     jne .dec_zero_loop
 
 .dec_print_loop:                ; печать буффера
-    mov r11, 64 + 0x402010
+    mov r11, 64 + 0x403010
     sub r11, r10
 
     mov dl, [r11]
-    mov [0x402000], dl
+    mov [0x403000], dl
     call _write
 
     dec r10
@@ -77,7 +77,7 @@ _start:
 
     mov rax, 0x01
     mov rdi, 1
-    mov rsi, 0x402001
+    mov rsi, 0x403001
     mov rdx, 1
     syscall
 
@@ -96,7 +96,7 @@ _write:
 
     mov rax, 0x01           ;syscall печати буффера
     mov rdi, 1
-    mov rsi, 0x402000
+    mov rsi, 0x403000
     xor rdx, rdx
     mov dl, 1
     syscall

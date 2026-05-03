@@ -7,7 +7,7 @@ _start:
     xor rcx, rcx
     .loop:
     call _read
-    movzx rbx, byte [0x402000]
+    movzx rbx, byte [0x403000]
 
     cmp bl, 0x0a
     je .end
@@ -57,7 +57,7 @@ _read:
 
     mov rax, 0            
     mov rdi, 0            
-    mov rsi, 0x402000     
+    mov rsi, 0x403000     
     mov rdx, 1          
     syscall   
 

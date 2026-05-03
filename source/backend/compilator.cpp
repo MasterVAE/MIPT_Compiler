@@ -403,7 +403,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_OUT         ; печать в stdout\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0xA00);
+            StaticJump(compilator, 0x1A00);
 
 
             return;
@@ -412,7 +412,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             PRINT(  "   call L0_IN          ; чтение из stdinma\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0xD00);
+            StaticJump(compilator, 0x1D00);
 
 
             return;
@@ -484,7 +484,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_EQUAL\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x400);
+            StaticJump(compilator, 0x1400);
 
             return;
         }
@@ -495,7 +495,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_NEQUAL\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x400);
+            StaticJump(compilator, 0x1500);
             return;
         }
         case OP_SMALLER:
@@ -505,7 +505,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_SMALLER\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x300);
+            StaticJump(compilator, 0x1300);
             return;
         }
         case OP_BIGGER:
@@ -515,7 +515,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
 
             PRINT(  "   call L0_BIGGER\n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x200);
+            StaticJump(compilator, 0x1200);
             return;
         }
         case OP_FUNCTION:
@@ -622,14 +622,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);   
             PRINT(  "   call L0_SET          ; запись в буффер \n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x600);
+            StaticJump(compilator, 0x1600);
             return;
         }
         case OP_DRAW:
         {
             PRINT(  "   call L0_DRAW         ; печать буффера \n");
             SET_BYTE(0xE8); SET_VALUE(0);                     
-            StaticJump(compilator, 0x800);
+            StaticJump(compilator, 0x1800);
             return;
         }
         case OP_EMPTY:
@@ -661,7 +661,7 @@ static Compilator* CreateCompilator()
         return NULL;
     }
 
-    comp->buffer = (char*)calloc(0x1000, sizeof(char));
+    comp->buffer = (char*)calloc(0x2000, sizeof(char));
     if(!comp->buffer) return NULL;
     comp->current_command = 0;
 
