@@ -18,49 +18,48 @@ static void Disasm(char* buffer);
 static void DisasmFile(char* buffer, const char* filename, size_t size);
 
 
-struct  Elf64_Ehdr_my
+struct Elf64_Ehdr_my
 {
-    unsigned char e_ident[16];
-    uint16_t      e_type;
-    uint16_t      e_machine;
-    uint32_t      e_version;
-    Elf64_Addr    e_entry;
-    Elf64_Off     e_phoff;
-    Elf64_Off     e_shoff;
-    uint32_t      e_flags;
-    uint16_t      e_ehsize;
-    uint16_t      e_phentsize;
-    uint16_t      e_phnum;
-    uint16_t      e_shentsize;
-    uint16_t      e_shnum;
-    uint16_t      e_shstrndx;
+    unsigned char e_ident[16];  // магическая сигнатура и информация о классе, порядке байт, версии ELF
+    uint16_t      e_type;       // тип объектного файла (исполняемый, разделяемая библиотека и т.д.)
+    uint16_t      e_machine;    // целевая архитектура процессора (x86-64, ARM и т.п.)
+    uint32_t      e_version;    // версия ELF-заголовка (обычно 1)
+    Elf64_Addr    e_entry;      // виртуальный адрес точки входа в программу
+    Elf64_Off     e_phoff;      // смещение в файле до таблицы программных заголовков
+    Elf64_Off     e_shoff;      // смещение в файле до таблицы заголовков секций
+    uint32_t      e_flags;      // специфичные для процессора флаги
+    uint16_t      e_ehsize;     // размер самого ELF-заголовка в байтах
+    uint16_t      e_phentsize;  // размер одного элемента таблицы программных заголовков
+    uint16_t      e_phnum;      // количество элементов в таблице программных заголовков
+    uint16_t      e_shentsize;  // размер одного элемента таблицы заголовков секций
+    uint16_t      e_shnum;      // количество элементов в таблице заголовков секций
+    uint16_t      e_shstrndx;   // индекс секции, содержащей строки имён секций
 };
 
 struct Elf64_Phdr_my 
 {
-    uint32_t   p_type;
-    uint32_t   p_flags;
-    Elf64_Off  p_offset;
-    Elf64_Addr p_vaddr;
-    Elf64_Addr p_paddr;
-    uint64_t   p_filesz;
-    uint64_t   p_memsz;
-    uint64_t   p_align;
+    uint32_t   p_type;    // тип сегмента (загружаемый, динамический, примечания и т.д.)
+    uint32_t   p_flags;   // флаги доступа к сегменту (чтение, запись, исполнение)
+    Elf64_Off  p_offset;  // смещение сегмента в файле
+    Elf64_Addr p_vaddr;   // виртуальный адрес, по которому сегмент загружается в память
+    Elf64_Addr p_paddr;   // физический адрес сегмента (используется редко)
+    uint64_t   p_filesz;  // размер сегмента в файловом образе (может быть меньше p_memsz)
+    uint64_t   p_memsz;   // размер сегмента в памяти (неинициализированные данные могут быть больше)
+    uint64_t   p_align;   // требование выравнивания сегмента (степень двойки)
 };
-
 
 struct Elf64_Shdr_my
 {
-    uint32_t   sh_name;
-    uint32_t   sh_type;
-    uint64_t   sh_flags;
-    Elf64_Addr sh_addr;
-    Elf64_Off  sh_offset;
-    uint64_t   sh_size;
-    uint32_t   sh_link;
-    uint32_t   sh_info;
-    uint64_t   sh_addralign;
-    uint64_t   sh_entsize;
+    uint32_t   sh_name;       // индекс в строковой таблице секций, хранящий имя секции
+    uint32_t   sh_type;       // тип секции (данные, символы, релокейшены и т.д.)
+    uint64_t   sh_flags;      // атрибуты секции (запись, выделение памяти, исполнение)
+    Elf64_Addr sh_addr;       // виртуальный адрес секции в памяти (если загружается)
+    Elf64_Off  sh_offset;     // смещение содержимого секции в файле
+    uint64_t   sh_size;       // размер секции в байтах
+    uint32_t   sh_link;       // индекс связанной секции (зависит от типа секции)
+    uint32_t   sh_info;       // дополнительная информация, зависящая от типа секции
+    uint64_t   sh_addralign;  // требование выравнивания адреса секции (степень двойки)
+    uint64_t   sh_entsize;    // размер одного элемента, если секция содержит таблицу фиксированных записей
 };
 
 void NasmCompile(const char* filename, Compilator* compilator)

@@ -6,8 +6,8 @@ _start:
     pop rbx
     pop rax
 
-    cmp rax, rbx
-    jb .smaller
+    cmp eax, ebx
+    jl .smaller
     jmp .not
 
 .smaller:

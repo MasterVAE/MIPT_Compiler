@@ -52,8 +52,8 @@ L0_BIGGER:
     pop rbx
     pop rax
 
-    cmp rax, rbx
-    ja .bigger
+    cmp eax, ebx
+    jg .bigger
     jmp .not
 
 .bigger:
@@ -74,8 +74,8 @@ L0_SMALLER:
     pop rbx
     pop rax
 
-    cmp rax, rbx
-    jb .smaller
+    cmp eax, ebx
+    jl .smaller
     jmp .not
 
 .smaller:
