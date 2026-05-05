@@ -96,6 +96,9 @@ run: frontend middlend backend
 	@gcc build/code.o -no-pie -o build/code.out
 	@./build/code.out
 
+bin: frontend middlend backend
+	@./files/prog.bin
+	
 bld: all
 
 clean:

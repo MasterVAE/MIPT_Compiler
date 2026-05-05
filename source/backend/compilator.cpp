@@ -6,9 +6,19 @@
 #include "tree.h"
 #include "compilator.h"
 #include "scope.h"
-#include "nasm.h"
+#include "binary.h"
+#include "constants.h"
 
-#define PRINT(...) fprintf(file, __VA_ARGS__);
+//#define NASM
+
+#ifdef NASM
+#define PRINT(...) fprintf(file, __VA_ARGS__); 
+#define SET_BYTE(byte);
+#define SET_VALUE(constant)
+#define JUMP(...)
+#define LABEL(...)
+#else
+#define PRINT(...)
 
 #define SET_BYTE(byte)                                                                  \
     compilator->buffer[compilator->current_command++] = (char)byte;
@@ -33,6 +43,7 @@
         sprintf(buffer, __VA_ARGS__);                                                   \
         AddLabel(compilator, buffer);                                                   \
     }
+#endif
 
 #define ERROR   {                                                                       \
                     fprintf(stderr, "%s:%d Compilator error\n", __FILE__, __LINE__);    \
@@ -81,11 +92,12 @@ void CompileTree(Tree* tree, FILE* file)
 
     CompileFunctions(file, compilator);
 
+#ifdef NASM
     LinkLibrary(file);
-
+#else
     CompileJumps(compilator);
-
-    NasmCompile("files/prog.bin", compilator);
+    BinaryCompile("files/prog.bin", compilator);
+#endif
 
     DestroyCompilator(compilator);
 
@@ -104,33 +116,33 @@ static void CompileSystemCodeBefore(FILE* file, TreeNode* root, Compilator* comp
     PRINT("main:\n");
 
     PRINT("   sub rsp, 1024         ; создание базового фрейма\n");
-    SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xEC);      
+    SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xEC);      
     SET_VALUE(1024);                                     
 
     PRINT("   mov rbp, rsp\n");
-    SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE5);      
+    SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE5);      
 
     PRINT("   add rbp, 8\n");
-    SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC5);      
+    SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC5);      
     SET_BYTE(0x08);
 
     PRINT("   mov rax, rbp\n");
-    SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);      
+    SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);      
 
     PRINT("   add rax, 8\n");
-    SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);      
+    SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);      
     SET_BYTE(0x08);
 
     PRINT("   mov rbx, rbp\n");
-    SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xEB);      
+    SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xEB);      
 
     size_t offset = (root->nametable->variable_count + 3) * 8;
     PRINT("   add rbx, %lu\n", offset);
-    SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xC3);      
+    SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xC3);      
     SET_VALUE((int)offset);                              
 
     PRINT("   mov [rax], rbx\n");
-    SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x18);      
+    SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x18);      
 }
 
 static void CompileSystemCodeAfter(FILE* file, Compilator* compilator)
@@ -141,14 +153,14 @@ static void CompileSystemCodeAfter(FILE* file, Compilator* compilator)
     PRINT("_end:               ; syscall выхода из программы\n");
 
     PRINT("   mov rax, 0x3C\n");
-    SET_BYTE(0x48); SET_BYTE(0xC7); SET_BYTE(0xC0);
+    SET_BYTE(REX_W); SET_BYTE(0xC7); SET_BYTE(0xC0);
     SET_VALUE(0x3C);
 
     PRINT("   xor rdi, rdi\n");
-    SET_BYTE(0x48); SET_BYTE(0x31); SET_BYTE(0xFF);      
+    SET_BYTE(REX_W); SET_BYTE(0x31); SET_BYTE(0xFF);      
 
     PRINT("   syscall\n");
-    SET_BYTE(0x0F); SET_BYTE(0x05);                      
+    SET_BYTE(SYSCALL_1); SET_BYTE(SYSCALL_2);                      
 }
 
 static void CompileFunctions(FILE* file, Compilator* compilator)
@@ -163,40 +175,40 @@ static void CompileFunctions(FILE* file, Compilator* compilator)
         LABEL("L_%s", func->left->value.identificator);
 
         PRINT(  "   pop rcx\n");
-        SET_BYTE(0x59);                                      
+        SET_BYTE(POP + RCX);                                      
 
         PRINT(  "   mov rax, rbp\n");
-        SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);    
+        SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);    
 
         PRINT(  "   add rax, 16\n");
-        SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);    
+        SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);    
         SET_BYTE(0x10);
 
         PRINT(  "   mov [rax], rcx\n");
-        SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x08);   
+        SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x08);   
 
         CompileArguments(func->right->left, file, compilator);
         CompileNode(func->right->right, file, compilator);
 
         PRINT("\n   mov rax, rbp\n");
-        SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);    
+        SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);    
 
         PRINT(  "   add rax, 16\n");
-        SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);     
+        SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);     
         SET_BYTE(0x10);
 
         PRINT(  "   mov rax, [rax]\n");
-        SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x00);    
+        SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x00);    
 
         PRINT(  "   push rax\n");
-        SET_BYTE(0x50);                                      
+        SET_BYTE(PUSH + RAX);                                      
 
         PRINT(  "   mov rbp, [rbp]\n");
-        SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x6D);     
+        SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x6D);     
         SET_BYTE(0x00);
 
         PRINT(  "   ret\n");
-        SET_BYTE(0xC3);                                     
+        SET_BYTE(RET);                                     
     }
 }
 
@@ -220,17 +232,17 @@ static void CompileArguments(TreeNode* node, FILE* file, Compilator* compilator)
         if(i == -1) ERROR;
 
         PRINT(  "   pop rax                             ; переменная %s\n", name);
-        SET_BYTE(0x58);                                      
+        SET_BYTE(POP + RAX);                                      
 
         PRINT(  "   mov rbx, rbp\n");
-        SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xEB);    
+        SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xEB);    
 
         PRINT(  "   add rbx, %d\n", (i + 3) * 8);
-        SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xC3);    
+        SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xC3);    
         SET_VALUE((i + 3) * 8);
 
         PRINT(  "   mov [rbp + %d], rax\n", (i + 3) * 8);
-        SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x85);   
+        SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x85);   
         SET_VALUE((i + 3) * 8);
     }
     else
@@ -251,13 +263,13 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
     if(node->type == NODE_CONSTANT)
     {
         PRINT(  "   mov rax, %d\n", node->value.constant);
-        SET_BYTE(0x48);
+        SET_BYTE(REX_W);
         SET_BYTE(0xC7);
         SET_BYTE(0xC0);                  
         SET_VALUE(node->value.constant);
 
         PRINT(  "   push rax\n");
-        SET_BYTE(0x50);
+        SET_BYTE(PUSH + RAX);
         return;
     }
 
@@ -277,17 +289,17 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             if(i == -1) ERROR;
 
             PRINT("\n   mov rbx, rbp           ; переменная %s\n", name);
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xEB);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xEB);
 
             PRINT("     add rbx, %d   \n", (i + 3) * 8);
-            SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xC3);
+            SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xC3);
             SET_VALUE((i + 3) * 8);
 
             PRINT("\n   mov rax, [rbx]\n");
-            SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x03);
+            SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x03);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
             return;
         }
         case OP_ADD:
@@ -296,16 +308,16 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   pop rax     ; сложение\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   pop rbx\n");
-            SET_BYTE(0x5B);
+            SET_BYTE(POP + RBX);
 
             PRINT(  "   add rax, rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x01); SET_BYTE(0xD8);
+            SET_BYTE(REX_W); SET_BYTE(0x01); SET_BYTE(0xD8);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
             return;
         }
         case OP_SUB:
@@ -314,16 +326,16 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax         ; вычитание\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   pop rbx\n");
-            SET_BYTE(0x5B);
+            SET_BYTE(POP + RBX);
 
             PRINT(  "   sub rax, rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x29); SET_BYTE(0xD8);
+            SET_BYTE(REX_W); SET_BYTE(0x29); SET_BYTE(0xD8);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
             return;
         }
         case OP_MUL:
@@ -332,21 +344,21 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax             ; умножение\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   pop rbx\n");
-            SET_BYTE(0x5B);
+            SET_BYTE(POP + RBX);
 
             PRINT(  "   mov rdx, 0\n");
-            SET_BYTE(0x48); SET_BYTE(0xC7); SET_BYTE(0xC2);
+            SET_BYTE(REX_W); SET_BYTE(0xC7); SET_BYTE(0xC2);
             SET_VALUE(0);
 
             PRINT(  "   imul rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x0F); SET_BYTE(0xAF);
+            SET_BYTE(REX_W); SET_BYTE(0x0F); SET_BYTE(0xAF);
             SET_BYTE(0xC3);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
             return;
         }
         case OP_DIV:
@@ -355,20 +367,20 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax             ; деление\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   pop rbx\n");
-            SET_BYTE(0x5B);
+            SET_BYTE(POP + RBX);
 
             PRINT(  "   mov rdx, 0\n");
-            SET_BYTE(0x48); SET_BYTE(0xC7); SET_BYTE(0xC2);
+            SET_BYTE(REX_W); SET_BYTE(0xC7); SET_BYTE(0xC2);
             SET_VALUE(0);
 
             PRINT(  "   idiv rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0xF7); SET_BYTE(0xFB);
+            SET_BYTE(REX_W); SET_BYTE(0xF7); SET_BYTE(0xFB);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
             return;
         }
         case OP_ASSIGN:
@@ -383,17 +395,17 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   pop rax             ; присваивание %s\n", name);
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   mov rbx, rbp\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xEB);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xEB);
 
             PRINT(  "   add rbx, %d\n", (i + 3) * 8);
-            SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xC3);
+            SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xC3);
             SET_VALUE((i + 3) * 8);
 
             PRINT(  "   mov [rbx], rax\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x03);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x03);
 
             return;
         }
@@ -402,7 +414,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   call L0_OUT         ; печать в stdout\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1A00);
 
 
@@ -410,8 +422,8 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         }
         case OP_IN:
         {
-            PRINT(  "   call L0_IN          ; чтение из stdinma\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            PRINT(  "   call L0_IN          ; чтение из stdin-a\n");
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1D00);
 
 
@@ -424,14 +436,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   mov rbx, 0\n");
-            SET_BYTE(0x48); SET_BYTE(0xC7); SET_BYTE(0xC3);
+            SET_BYTE(REX_W); SET_BYTE(0xC7); SET_BYTE(0xC3);
             SET_VALUE(0);
 
             PRINT(  "   cmp rax, rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x39); SET_BYTE(0xD8);
+            SET_BYTE(REX_W); SET_BYTE(0x39); SET_BYTE(0xD8);
 
             PRINT(  "   je .L%lu\n", lable);
             SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     
@@ -454,14 +466,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->left, file, compilator);
 
             PRINT(  "   pop rax\n");
-            SET_BYTE(0x58);
+            SET_BYTE(POP + RAX);
 
             PRINT(  "   mov rbx, 0\n");
-            SET_BYTE(0x48); SET_BYTE(0xC7); SET_BYTE(0xC3);
+            SET_BYTE(REX_W); SET_BYTE(0xC7); SET_BYTE(0xC3);
             SET_VALUE(0);
 
             PRINT(  "   cmp rax, rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x39); SET_BYTE(0xD8);
+            SET_BYTE(REX_W); SET_BYTE(0x39); SET_BYTE(0xD8);
 
             PRINT(  "   je .L%lu\n", label2);
             SET_BYTE(0x0F); SET_BYTE(0x84); SET_VALUE(0);     
@@ -470,7 +482,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   jmp .L%lu\n", label1);
-            SET_BYTE(0xE9); SET_VALUE(0);                     
+            SET_BYTE(JMP); SET_VALUE(PLACEHOLDER);                     
             JUMP(".L%lu", label1);
 
             PRINT(".L%lu:\n", label2);
@@ -483,7 +495,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_EQUAL\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1400);
 
             return;
@@ -494,7 +506,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_NEQUAL\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1500);
             return;
         }
@@ -504,7 +516,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_SMALLER\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1300);
             return;
         }
@@ -514,7 +526,7 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT(  "   call L0_BIGGER\n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1200);
             return;
         }
@@ -548,39 +560,39 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             CompileNode(node->right, file, compilator);
 
             PRINT("\n   mov rax, rbp          ; создание стекового фрейма для вызываемой функции\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);
 
             PRINT(  "   add rax, 8\n");
-            SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);
+            SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);
             SET_BYTE(0x08);
 
             PRINT(  "   mov rax, [rax]\n");
-            SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x00);
+            SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x00);
             PRINT(  "   mov [rax], rbp\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x28);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x28);
 
             PRINT(  "   mov rbp, rax\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xC5);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xC5);
 
             PRINT(  "   mov rax, rbp\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);
 
             PRINT(  "   add rax, 8\n");
-            SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);
+            SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);
             SET_BYTE(0x08);
 
             PRINT(  "   mov rbx, rbp\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xEB); 
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xEB); 
 
             PRINT(  "   add rbx, %lu\n", (3 + callee_vars) * 8);
-            SET_BYTE(0x48); SET_BYTE(0x81); SET_BYTE(0xC3);   
+            SET_BYTE(REX_W); SET_BYTE(0x81); SET_BYTE(0xC3);   
             SET_VALUE((int)((3 + callee_vars) * 8));          
 
             PRINT(  "   mov [rax], rbx\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0x18);  
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0x18);  
 
             PRINT(  "   call L_%s\n", node->left->value.identificator);
-            SET_BYTE(0xE8); SET_VALUE(0);                
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                
             JUMP("L_%s", node->left->value.identificator);
 
             return;
@@ -590,24 +602,24 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
             if(node->left)  CompileNode(node->left, file, compilator);
 
             PRINT("\n   mov rax, rbp             ;return\n");
-            SET_BYTE(0x48); SET_BYTE(0x89); SET_BYTE(0xE8);
+            SET_BYTE(REX_W); SET_BYTE(0x89); SET_BYTE(0xE8);
 
             PRINT(  "   add rax, 16\n");
-            SET_BYTE(0x48); SET_BYTE(0x83); SET_BYTE(0xC0);
+            SET_BYTE(REX_W); SET_BYTE(0x83); SET_BYTE(0xC0);
             SET_BYTE(0x10);
 
             PRINT(  "   mov rax, [rax]\n");
-            SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x00);
+            SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x00);
 
             PRINT(  "   push rax\n");
-            SET_BYTE(0x50);
+            SET_BYTE(PUSH + RAX);
 
             PRINT(  "   mov rbp, [rbp]\n");
-            SET_BYTE(0x48); SET_BYTE(0x8B); SET_BYTE(0x6D);
+            SET_BYTE(REX_W); SET_BYTE(0x8B); SET_BYTE(0x6D);
             SET_BYTE(0x00);
 
             PRINT(  "   ret\n");
-            SET_BYTE(0xC3);
+            SET_BYTE(RET);
 
             return;
         }
@@ -621,14 +633,14 @@ static void CompileNode(TreeNode* node, FILE* file, Compilator* compilator)
         {
             CompileNode(node->left, file, compilator);   
             PRINT(  "   call L0_SET          ; запись в буффер \n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1600);
             return;
         }
         case OP_DRAW:
         {
             PRINT(  "   call L0_DRAW         ; печать буффера \n");
-            SET_BYTE(0xE8); SET_VALUE(0);                     
+            SET_BYTE(CALL); SET_VALUE(PLACEHOLDER);                     
             StaticJump(compilator, 0x1800);
             return;
         }
@@ -760,24 +772,28 @@ static void AddJump(Compilator* comp, char* name)
     comp->jumps[i].write_offset = offset - 4;
 }
 
+#ifdef NASM
+static void StaticJump(Compilator* comp, size_t adress) {}
+#else
 static void StaticJump(Compilator* comp, size_t adress)
 {
     assert(comp);
     size_t offset = adress - comp->current_command;
     memcpy(comp->buffer + comp->current_command - 4, &offset, 4);
 }
+#endif
 
 static void CompileJumps(Compilator* comp)
 {
     assert(comp);
     for(size_t i = 0; i < comp->jump_count; i++)
     {
-        size_t label = -1;
+        int label = -1;
         for(size_t j = 0; j < comp->lable_count; j++)
         {
             if(!strcmp(comp->lables[j].name, comp->jumps[i].name))
             {
-                label = j;
+                label = (int)j;
                 break;
             }
         }

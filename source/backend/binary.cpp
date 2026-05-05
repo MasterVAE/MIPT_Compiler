@@ -6,10 +6,11 @@
 #include <elf.h>
 
 #include "compilator.h"
-#include "nasm.h"
+#include "binary.h"
+#include "constants.h"
 
 
-void InsertHeader(char* buffer, Compilator* compilator);
+void InsertHeader(char* buffer);
 void InsertProg(char* buffer, Compilator* compilator);
 void InsertData(char* buffer);
 void InsertSections(char* buffer, Compilator* compilator);
@@ -62,29 +63,29 @@ struct Elf64_Shdr_my
     uint64_t   sh_entsize;    // размер одного элемента, если секция содержит таблицу фиксированных записей
 };
 
-void NasmCompile(const char* filename, Compilator* compilator)
+void BinaryCompile(const char* filename, Compilator* compilator)
 {
     assert(filename);
 
     FILE* binary_file = fopen(filename, "w+");
     if(!binary_file) return;
 
-    char* buffer = (char*)calloc(0x5000, sizeof(char));
+    char* buffer = (char*)calloc(FILESIZE, sizeof(char));
 
-    InsertHeader(buffer, compilator);
+    InsertHeader(buffer);
     InsertProg(buffer, compilator);
     InsertData(buffer);
     InsertSections(buffer, compilator);
 
     Disasm(buffer);
 
-    fwrite(buffer, 0x4000, 1, binary_file);
+    fwrite(buffer, FILESIZE, 1, binary_file);
     free(buffer);
 
     fclose(binary_file);
 }
 
-void InsertHeader(char* buffer, Compilator* compilator)
+void InsertHeader(char* buffer)
 {
     Elf64_Ehdr_my elf_header = 
     {
@@ -92,9 +93,9 @@ void InsertHeader(char* buffer, Compilator* compilator)
         .e_type = 2,
         .e_machine = 62,
         .e_version = 1,
-        .e_entry = 0x401000,
+        .e_entry = VADRESS + ENTRY_POINT,
         .e_phoff = 64,
-        .e_shoff = 0x3100,
+        .e_shoff = DATA_POINT + 0x100,
         .e_flags = 0,
         .e_ehsize = 64,
         .e_phentsize = 56,
@@ -109,28 +110,28 @@ void InsertHeader(char* buffer, Compilator* compilator)
         .p_type = 1,
         .p_flags = 5,
         .p_offset = 0,
-        .p_vaddr = 0x400000,
+        .p_vaddr = VADRESS,
         .p_paddr = 0,
-        .p_filesz = 0x3000,
-        .p_memsz = 0x3000,
-        .p_align = 0x1000
+        .p_filesz = DATA_POINT,
+        .p_memsz = DATA_POINT,
+        .p_align = ALIGNMENT
     };
 
     Elf64_Phdr_my data_header = 
     {
         .p_type = 1,
         .p_flags = 6,
-        .p_offset = 0x3000,
-        .p_vaddr = 0x403000,
+        .p_offset = DATA_POINT,
+        .p_vaddr = VADRESS + DATA_POINT,
         .p_paddr = 0,
         .p_filesz = 102,
         .p_memsz = 166,
-        .p_align = 0x1000
+        .p_align = ALIGNMENT
     };
 
     memcpy(buffer, &elf_header, sizeof(elf_header));
-    memcpy(buffer + 0x40, &text_header, sizeof(text_header));
-    memcpy(buffer + 0x78, &data_header, sizeof(data_header));
+    memcpy(buffer + sizeof(elf_header), &text_header, sizeof(text_header));
+    memcpy(buffer + sizeof(elf_header) + sizeof(text_header), &data_header, sizeof(data_header));
 }
 
 void InsertProg(char* buffer, Compilator* compilator)
@@ -138,8 +139,8 @@ void InsertProg(char* buffer, Compilator* compilator)
     assert(buffer);
     assert(compilator);
 
-    printf("Code %lu/%d\n", compilator->current_command, 0x2000);
-    memcpy(buffer + 0x1000, compilator->buffer, 0x2000);
+    printf("Code %lu/%d\n", compilator->current_command, DATA_POINT - ENTRY_POINT);
+    memcpy(buffer + ENTRY_POINT, compilator->buffer, DATA_POINT - ENTRY_POINT);
 }
 
 void InsertData(char* buffer)
@@ -152,11 +153,11 @@ void InsertData(char* buffer)
     for (int i = 2; i < 102; ++i)
         data_bytes[i] = '_';
 
-    memcpy(buffer + 0x3000, data_bytes, sizeof(data_bytes));
+    memcpy(buffer + DATA_POINT, data_bytes, sizeof(data_bytes));
 
     const char* shstrtab = "\0.shstrtab\0.text\0.data\0.bss\0";
     size_t shstrtab_size = 28;
-    memcpy(buffer + 0x3066, shstrtab, shstrtab_size);
+    memcpy(buffer + DATA_POINT + 0x66, shstrtab, shstrtab_size);
 }
 
 void InsertSections(char* buffer, Compilator* compilator)
@@ -170,9 +171,9 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_name      = 11,
         .sh_type      = 1,
         .sh_flags     = 0x6,
-        .sh_addr      = 0x401000,
-        .sh_offset    = 0x1000,
-        .sh_size      = 0x2000,
+        .sh_addr      = VADRESS + ENTRY_POINT,
+        .sh_offset    = ENTRY_POINT,
+        .sh_size      = DATA_POINT - ENTRY_POINT,
         .sh_link      = 0,
         .sh_info      = 0,
         .sh_addralign = 16,
@@ -183,8 +184,8 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_name      = 17,
         .sh_type      = 1,
         .sh_flags     = 0x3,
-        .sh_addr      = 0x403000,
-        .sh_offset    = 0x3000,
+        .sh_addr      = VADRESS + DATA_POINT,
+        .sh_offset    = DATA_POINT,
         .sh_size      = 102,
         .sh_link      = 0,
         .sh_info      = 0,
@@ -196,7 +197,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_name      = 23,
         .sh_type      = 8,
         .sh_flags     = 0x3,
-        .sh_addr      = 0x403010,
+        .sh_addr      = VADRESS + DATA_POINT + 0x10,
         .sh_offset    = 0,
         .sh_size      = 64,
         .sh_link      = 0,
@@ -210,7 +211,7 @@ void InsertSections(char* buffer, Compilator* compilator)
         .sh_type      = 3,
         .sh_flags     = 0,
         .sh_addr      = 0,
-        .sh_offset    = 0x3066,
+        .sh_offset    = DATA_POINT + 0x66,
         .sh_size      = 28,
         .sh_link      = 0,
         .sh_info      = 0,
@@ -248,7 +249,7 @@ static void DisasmFile(char* buffer, const char* filename, size_t size)
     FILE* file = fopen(filename, "rb+");
     if(!file) return;
 
-    fseek(file, 0x1000, SEEK_SET);
+    fseek(file, ENTRY_POINT, SEEK_SET);
     fread(buffer, size, 1, file);
 
     fclose(file);
