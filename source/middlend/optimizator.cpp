@@ -22,7 +22,6 @@ static void OptimizeNode(TreeNode* node)
     OptimizeNode(node->left);
     OptimizeNode(node->right);
 
-    // FIXME bug
     ConstantFolding(node);
 
     DeadCodeElimination(node);

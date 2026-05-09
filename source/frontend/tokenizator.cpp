@@ -66,7 +66,6 @@ static Program* Read(Program* prog, const char* buffer)
     while(*buffer != '\0')
     {
         SKIP;
-// FIXME 2 cycles
         if(!strncmp(buffer, COMMENT, strlen(COMMENT)))
         {
             SkipSpaces(&buffer, true);

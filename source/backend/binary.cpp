@@ -231,14 +231,14 @@ static void Disasm(char* buffer)
 {
     assert(buffer);
 
-    DisasmFile(buffer + 0x2200, "source/backend/lib/bigger", 0x100);
-    DisasmFile(buffer + 0x2300, "source/backend/lib/smaller", 0x100);
-    DisasmFile(buffer + 0x2400, "source/backend/lib/equal", 0x100);
-    DisasmFile(buffer + 0x2500, "source/backend/lib/nequal", 0x100);
-    DisasmFile(buffer + 0x2600, "source/backend/lib/set", 0x200);
-    DisasmFile(buffer + 0x2800, "source/backend/lib/draw", 0x200);
-    DisasmFile(buffer + 0x2A00, "source/backend/lib/out", 0x300);
-    DisasmFile(buffer + 0x2D00, "source/backend/lib/in", 0x300);
+    DisasmFile(buffer + BIGGER_ENTRY,   "source/backend/lib/bigger", 0x100);
+    DisasmFile(buffer + SMALLER_ENTRY,  "source/backend/lib/smaller", 0x100);
+    DisasmFile(buffer + EQUAL_ENTRY,    "source/backend/lib/equal", 0x100);
+    DisasmFile(buffer + NEQUAL_ENTRY,   "source/backend/lib/nequal", 0x100);
+    DisasmFile(buffer + SET_ENTRY,      "source/backend/lib/set", 0x200);
+    DisasmFile(buffer + DRAW_ENTRY,     "source/backend/lib/draw", 0x200);
+    DisasmFile(buffer + OUT_ENTRY,      "source/backend/lib/out", 0x300);
+    DisasmFile(buffer + IN_ENTRY,       "source/backend/lib/in", 0x300);
 }
 
 static void DisasmFile(char* buffer, const char* filename, size_t size)
