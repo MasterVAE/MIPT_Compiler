@@ -67,7 +67,7 @@ void BinaryCompile(const char* filename, Compilator* compilator)
 {
     assert(filename);
 
-    FILE* binary_file = fopen(filename, "w+");
+    FILE* binary_file = fopen(filename, "wb+");
     if(!binary_file) return;
 
     char* buffer = (char*)calloc(FILESIZE, sizeof(char));
